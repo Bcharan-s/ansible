@@ -1,0 +1,9 @@
+---
+
+- name: Ansible playbook to copy files
+  hosts: web
+  become: yes
+  roles:
+    - ApacheTomcat
+    - ApacheMaven
+    

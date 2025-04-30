@@ -1,0 +1,35 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for ApacheMaven
+
+- name: Install python
+  ansible.builtin.apt:
+    name: software-properties-common
+    state: present
+
+- name: Install openjdk
+  ansible.builtin.apt:
+    name: default-jdk
+    state: present
+
+- name: Create a directory
+  ansible.builtin.file:
+    path: /home/edureka/Downloads/
+    state: directory
+    mode: '0755'
+      
+- name: Download file
+  ansible.builtin.get_url:
+    url: https://dlcdn.apache.org/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz
+    dest: /home/edureka/Downloads/
+
+- name: Unarchive a file that is already on the remote machine
+  ansible.builtin.unarchive:
+    src: /home/edureka/Downloads/apache-maven-3.9.9-bin.tar.gz
+    dest: /opt/
+    remote_src: yes
+
+- name: Run command
+  ansible.builtin.command: update-alternatives --install /usr/bin/mvn maven /opt/apache-maven-3.9.9/bin/mvn 1001
+  args:
+    creates: /usr/bin/mvn

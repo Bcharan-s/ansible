@@ -1,0 +1,101 @@
+---
+
+- name: Install jdk
+  ansible.builtin.apt:
+    name: default-jdk
+    state: present
+
+- name: Ensure group "tomcat" exists
+  ansible.builtin.group:
+    name: tomcat
+    state: present
+
+- name: Adding user
+  ansible.builtin.user:
+    name: tomcat
+    shell: /bin/false
+    group: tomcat
+    home: /opt/tomcat
+    create_home: no
+
+- name: Download tomcat
+  ansible.builtin.get_url:
+    url: https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.40/bin/apache-tomcat-10.1.40.tar.gz
+    dest: /home/ubuntu
+
+- name: Create a directory if it does not exist
+  ansible.builtin.file:
+    path: /opt/tomcat
+    state: directory
+    mode: '0755'
+
+- name: Unarchive a file that is already on the remote machine
+  ansible.builtin.unarchive:
+    src: /home/ubuntu/apache-tomcat-10.1.40.tar.gz
+    dest: /opt/tomcat
+    remote_src: yes
+    extra_opts:
+     - --strip-components=1
+
+- name: Permissions for tomcat
+  ansible.builtin.file:
+    path: /opt/tomcat
+    state: directory
+    group: tomcat
+
+- name: Change permissions of conf
+  ansible.builtin.file:
+    path: /opt/tomcat/conf
+    mode: g+rx
+    recurse: true
+
+
+- name: Change file ownership
+  ansible.builtin.file:
+    path: /opt/tomcat/{{item}}
+    owner: tomcat
+    mode: '0777'
+    recurse: true
+  loop:
+     - webapps
+     - logs
+     - work
+     - temp
+
+- name: Copy using inline content
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=Apache Tomcat Web Application 
+      ContainerAfter=network.targetd
+      
+      [Service]
+      Type=forking
+      Environment=JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64/
+      Environment=CATALINA_PID=/opt/tomcat/temp/tomcat.pid
+      Environment=CATALINA_HOME=/opt/tomcat
+      Environment=CATALINA_BASE=/opt/tomcat
+      Environment='CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC'
+      Environment='JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom'
+      
+      ExecStart=/opt/tomcat/bin/startup.sh
+      ExecStop=/opt/tomcat/bin/shutdown.sh
+      
+      User=tomcat
+      Group=tomcat
+      UMask=0007
+      RestartSec=10
+      Restart=always
+      
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/tomcat.service 
+
+- name: Deamon reload
+  ansible.builtin.command: systemctl daemon-reload
+
+- name: Starting Tomcat
+  ansible.builtin.systemd_service:
+    state: started
+    name: tomcat
+
